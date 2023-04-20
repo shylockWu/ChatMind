@@ -78,7 +78,7 @@ async function sendMessage() {
         }
         // scrollToBottom
 
-        // console.log(responseText)
+        console.log(responseText)
       },
     })
     // ！根据返回的内容进行分别请求然后得到输出
