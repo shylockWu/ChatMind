@@ -2,6 +2,7 @@
 import { reactive, ref } from 'vue'
 import { chat } from '@/server/index'
 import { useScroll } from '@/hooks/useScroll'
+import { steps } from '@/utils/index'
 
 interface Messages {
   id: number
@@ -13,7 +14,7 @@ const newMessage = ref('')
 const isTyping = ref(false)
 const session_id = ref('')
 const currentIndex = ref<Number | null>(null)
-const AutoGPTPrompt = '从现在你就是一个AI脑图,我需要输入任务的内容,请注意,你需要设置每一步的优先级并进行排序,并且在尽可能简化步骤的同时,还要提高实际完成此步骤的效率,每一步都要有description,并且分解成一维的结构,请你分解后返回一个可读的JSON格式'
+const AutoGPTPrompt = '从现在你就是一个AI脑图,我需要输入任务的内容,请注意,你需要设置每一步的优先级并进行排序,并且在尽可能简化步骤的同时,还要提高实际完成此步骤的效率,并且分解成一维的结构,请你分解后返回一个一维数组,用AutoArr进行赋值,每个对象中必须有description属性,用来描述当前的行为,可能还有其他的属性,总的来说举例子,例如AutoArr=[{description:安装node}]'
 const { scrollRef, scrollToBottom, scrollToBottomIfAtBottom } = useScroll()
 // 初始化GPT的角色，后续可自行调整
 const { data } = await chat({
@@ -57,21 +58,21 @@ async function sendMessage() {
   scrollToBottom()
 
   try {
-    let isFirst = true
+    let isFirst1 = true
     const { data } = await chat({
-      prompt: newMessage.value,
+      prompt: `${AutoGPTPrompt},现在你需要分解的任务是:${newMessage.value}`,
       session_id: session_id.value,
       onDownloadProgress(progressEvent) {
         const xhr = progressEvent.event.target
         const { responseText } = xhr
-        if (isFirst) {
+        if (isFirst1) {
           messages.splice(messages.length, 0, {
             id: Date.now(),
             content: responseText,
             isBot: true,
           })
           currentIndex.value = messages.length - 1
-          isFirst = false
+          isFirst1 = false
         }
         else {
           messages[messages.length - 1].content = responseText
@@ -82,16 +83,39 @@ async function sendMessage() {
         console.log(responseText)
       },
     })
-    // ！根据返回的内容进行分别请求然后得到输出
-    //   const JSONObject = JSON.parse(data)
-    //   const AIRequest = []
-    //   for (const item of JSONObject) {
-    //     AIRequest.push(AI({prompt:item.description,session_id:this.session_id}))
-    //   }
+    // 根据返回的内容进行识别,然后请求
+    const newSteps = steps(data)
+    let isFirst2 = true
+    for await (const item of newSteps) {
+      try {
+        await chat({
+          prompt: item.description,
+          onDownloadProgress(progressEvent) {
+            const xhr = progressEvent.event.target
+            const { responseText } = xhr
+            if (isFirst2) {
+              messages.splice(messages.length, 0, {
+                id: Date.now(),
+                content: responseText,
+                isBot: true,
+              })
+              currentIndex.value = messages.length - 1
+              isFirst2 = false
+            }
+            else {
+              messages[messages.length - 1].content = responseText
+              scrollToBottom()
+            }
+            // scrollToBottom
 
-    //  const AllRes = await Promise.all(AIRequest) // 可能耗时很久，可以考虑循环请求输出
-    // TODO:
-    // 循环
+            console.log(responseText)
+          },
+        })
+      }
+      catch (error) {
+
+      }
+    }
     isTyping.value = false
     session_id.value = data.session_id // 更新session_id
   }
