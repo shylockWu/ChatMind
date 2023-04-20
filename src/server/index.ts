@@ -8,11 +8,24 @@
  *
  * Copyright (c) 2023 by ${git_name_email}, All Rights Reserved.
  */
+import type { AxiosProgressEvent } from 'axios'
 import axios from 'axios'
 
 const apiClient = axios.create({
   baseURL: 'https://s3m25c.laf.dev/test-open-api',
-  responseType: 'stream',
 })
 
-export default apiClient
+function chat(params: {
+  prompt: string
+  session_id?: string
+  onDownloadProgress?: (ProgressEvent: AxiosProgressEvent) => void
+}) {
+  return apiClient({
+    method: 'POST',
+    responseType: 'stream',
+    data: { prompt: params.prompt, session_id: params.session_id, key: '6lDP2LyQMYTR32MORBr3' },
+    onDownloadProgress: params.onDownloadProgress,
+  })
+}
+
+export { chat }
