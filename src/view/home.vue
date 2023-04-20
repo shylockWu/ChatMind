@@ -35,7 +35,7 @@ messages.splice(messages.length, 0, {
   content: data,
   isBot: true,
 })
-scrollToBottomIfAtBottom()
+scrollToBottom()
 
 async function sendMessage() {
   if (messages.length === 0) {
@@ -54,8 +54,8 @@ async function sendMessage() {
     content: newMessage.value,
     isBot: false,
   })
+  scrollToBottom()
 
-  // hooks scrollToBottom
   try {
     let isFirst = true
     const { data } = await chat({
@@ -75,6 +75,7 @@ async function sendMessage() {
         }
         else {
           messages[messages.length - 1].content = responseText
+          scrollToBottom()
         }
         // scrollToBottom
 
